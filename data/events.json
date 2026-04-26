@@ -1,0 +1,42 @@
+[
+  {
+    "eventId": "evt-20260426-0001",
+    "deviceId": "rpi-001",
+    "userId": "user-001",
+    "eventType": "DELIRIUM_EXIT_RISK",
+    "severity": "HIGH",
+    "timestamp": "2026-04-26T16:30:00+09:00",
+    "deliriumSuspected": true,
+    "abnormalExit": true,
+    "doorOpen": true,
+    "rfidDetected": false,
+    "buzzerActivated": true,
+    "processedSensorData": {
+      "heartRate": 112,
+      "sleepState": "AWAKE",
+      "activityLevel": 78,
+      "doorDistanceCm": 35
+    },
+    "receivedAt": "2026-04-26T12:47:30.570Z"
+  },
+  {
+    "eventId": "evt-20260426-0001",
+    "deviceId": "rpi-001",
+    "userId": "user-001",
+    "eventType": "DELIRIUM_EXIT_RISK",
+    "severity": "HIGH",
+    "timestamp": "2026-04-26T16:30:00+09:00",
+    "deliriumSuspected": true,
+    "abnormalExit": true,
+    "doorOpen": true,
+    "rfidDetected": false,
+    "buzzerActivated": true,
+    "processedSensorData": {
+      "heartRate": 112,
+      "sleepState": "AWAKE",
+      "activityLevel": 78,
+      "doorDistanceCm": 35
+    },
+    "receivedAt": "2026-04-26T12:47:46.495Z"
+  }
+]
