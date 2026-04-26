@@ -1,0 +1,34 @@
+{
+  "name": "team8",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cloud-IoT-Service-Team8/BE.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Cloud-IoT-Service-Team8/BE/issues"
+  },
+  "homepage": "https://github.com/Cloud-IoT-Service-Team8/BE#readme",
+  "dependencies": {
+    "axios": "^1.15.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "morgan": "^1.10.1",
+    "mqtt": "^5.15.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
