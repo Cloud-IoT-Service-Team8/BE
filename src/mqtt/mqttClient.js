@@ -14,6 +14,8 @@ function connectMqtt() {
     }
 
     const client = mqtt.connect(brokerUrl, {
+        clientId: "healthcare-server",
+        clean: false,
         reconnectPeriod: 3000,
         connectTimeout: 5000,
         username: process.env.MQTT_USERNAME || undefined,
@@ -23,7 +25,7 @@ function connectMqtt() {
     client.on("connect", () => {
         console.log(`[MQTT] Connected to broker: ${brokerUrl}`);
 
-        client.subscribe(subscribeTopic, (error) => {
+        client.subscribe(subscribeTopic, { qos: 1 }, (error) => {
             if (error) {
                 console.error("[MQTT] Subscribe failed:", error.message);
                 return;

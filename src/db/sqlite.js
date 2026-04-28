@@ -25,6 +25,7 @@ async function getDb() {
 
     await db.exec("PRAGMA foreign_keys = ON");
     await initializeTables(db);
+    await runMigrations(db);
 
     return db;
 }
@@ -81,6 +82,16 @@ async function initializeTables(db) {
             received_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
     `);
+}
+
+async function runMigrations(db) {
+    try {
+        await db.exec(`ALTER TABLE guardians ADD COLUMN last_alerted_at TEXT`);
+    } catch (error) {
+        if (!error.message.includes("duplicate column name")) {
+            throw error;
+        }
+    }
 }
 
 module.exports = {

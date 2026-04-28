@@ -5,13 +5,27 @@ const snsClient = new SNSClient({
     region: process.env.AWS_REGION || "ap-northeast-1",
 });
 
-async function getGuardianPhoneNumber(userId) {
+async function getGuardian(userId) {
     const db = await getDb();
-    const row = await db.get(
-        `SELECT phone_number FROM guardians WHERE user_id = ?`,
+    return db.get(
+        `SELECT phone_number, last_alerted_at FROM guardians WHERE user_id = ?`,
         [userId],
     );
-    return row ? row.phone_number : null;
+}
+
+async function updateLastAlertedAt(userId) {
+    const db = await getDb();
+    await db.run(
+        `UPDATE guardians SET last_alerted_at = ? WHERE user_id = ?`,
+        [new Date().toISOString(), userId],
+    );
+}
+
+function isInCooldown(lastAlertedAt) {
+    if (!lastAlertedAt) return false;
+    const cooldownMinutes = parseInt(process.env.ALERT_COOLDOWN_MINUTES || "10", 10);
+    const elapsedMinutes = (Date.now() - new Date(lastAlertedAt).getTime()) / 60000;
+    return elapsedMinutes < cooldownMinutes;
 }
 
 async function sendAlertIfNeeded(event) {
@@ -28,10 +42,15 @@ async function sendAlertIfNeeded(event) {
         return;
     }
 
-    const phoneNumber = await getGuardianPhoneNumber(event.userId);
+    const guardian = await getGuardian(event.userId);
 
-    if (!phoneNumber) {
+    if (!guardian) {
         console.warn("[AlertService] No guardian found for userId:", event.userId);
+        return;
+    }
+
+    if (isInCooldown(guardian.last_alerted_at)) {
+        console.log("[AlertService] Cooldown active, skipping alert for userId:", event.userId);
         return;
     }
 
@@ -40,43 +59,56 @@ async function sendAlertIfNeeded(event) {
     if (alertChannel !== "aws-sns") {
         console.log("[AlertService] Alert channel is not aws-sns:", alertChannel);
         console.log(createSmsMessage(event));
+        await updateLastAlertedAt(event.userId);
         return;
     }
 
-    await sendSmsByAwsSns(event, phoneNumber);
+    const sent = await sendSmsByAwsSns(event, guardian.phone_number);
+    if (sent) {
+        await updateLastAlertedAt(event.userId);
+    }
 }
 
 async function sendSmsByAwsSns(event, phoneNumber) {
     const message = createSmsMessage(event);
+    const maxRetries = parseInt(process.env.ALERT_MAX_RETRIES || "3", 10);
 
     console.log("[AlertService] Sending SMS via AWS SNS...");
     console.log("[AlertService] PhoneNumber:", phoneNumber);
     console.log("[AlertService] Message:");
     console.log(message);
 
-    try {
-        const command = new PublishCommand({
-            PhoneNumber: phoneNumber,
-            Message: message,
-            MessageAttributes: {
-                "AWS.SNS.SMS.SMSType": {
-                    DataType: "String",
-                    StringValue: "Transactional",
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const command = new PublishCommand({
+                PhoneNumber: phoneNumber,
+                Message: message,
+                MessageAttributes: {
+                    "AWS.SNS.SMS.SMSType": {
+                        DataType: "String",
+                        StringValue: "Transactional",
+                    },
                 },
-            },
-        });
+            });
 
-        const result = await snsClient.send(command);
+            const result = await snsClient.send(command);
 
-        console.log("[AlertService] AWS SNS SMS sent successfully");
-        console.log("[AlertService] eventId:", event.eventId);
-        console.log("[AlertService] messageId:", result.MessageId);
-    } catch (error) {
-        console.error("[AlertService] AWS SNS SMS send failed");
-        console.error("[AlertService] error name:", error.name);
-        console.error("[AlertService] error message:", error.message);
-        console.error("[AlertService] error:", error);
+            console.log("[AlertService] AWS SNS SMS sent successfully");
+            console.log("[AlertService] eventId:", event.eventId);
+            console.log("[AlertService] messageId:", result.MessageId);
+            return true;
+        } catch (error) {
+            console.error(`[AlertService] SMS attempt ${attempt + 1}/${maxRetries} failed:`, error.message);
+            if (attempt < maxRetries - 1) {
+                const delay = 1000 * Math.pow(2, attempt);
+                console.log(`[AlertService] Retrying in ${delay}ms...`);
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+        }
     }
+
+    console.error("[AlertService] All SMS attempts failed for eventId:", event.eventId);
+    return false;
 }
 
 function createSmsMessage(event) {
