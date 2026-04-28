@@ -1,8 +1,18 @@
 const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const { getDb } = require("../db/sqlite");
 
 const snsClient = new SNSClient({
     region: process.env.AWS_REGION || "ap-northeast-1",
 });
+
+async function getGuardianPhoneNumber(userId) {
+    const db = await getDb();
+    const row = await db.get(
+        `SELECT phone_number FROM guardians WHERE user_id = ?`,
+        [userId],
+    );
+    return row ? row.phone_number : null;
+}
 
 async function sendAlertIfNeeded(event) {
     console.log("[AlertService] sendAlertIfNeeded called");
@@ -10,12 +20,18 @@ async function sendAlertIfNeeded(event) {
     console.log("[AlertService] severity:", event.severity);
     console.log("[AlertService] ALERT_CHANNEL:", process.env.ALERT_CHANNEL);
     console.log("[AlertService] AWS_REGION:", process.env.AWS_REGION);
-    console.log("[AlertService] SMS_TO:", process.env.SMS_TO);
 
     const shouldSendAlert = event.eventType === "DELIRIUM_EXIT_RISK" && event.severity === "HIGH";
 
     if (!shouldSendAlert) {
         console.log("[AlertService] Alert not required");
+        return;
+    }
+
+    const phoneNumber = await getGuardianPhoneNumber(event.userId);
+
+    if (!phoneNumber) {
+        console.warn("[AlertService] No guardian found for userId:", event.userId);
         return;
     }
 
@@ -27,20 +43,13 @@ async function sendAlertIfNeeded(event) {
         return;
     }
 
-    await sendSmsByAwsSns(event);
+    await sendSmsByAwsSns(event, phoneNumber);
 }
 
-async function sendSmsByAwsSns(event) {
-    const phoneNumber = process.env.SMS_TO;
-
-    if (!phoneNumber) {
-        console.error("[AlertService] SMS_TO is missing in .env");
-        return;
-    }
-
+async function sendSmsByAwsSns(event, phoneNumber) {
     const message = createSmsMessage(event);
 
-    console.log("[AlertService] Sending SMS by AWS SNS...");
+    console.log("[AlertService] Sending SMS via AWS SNS...");
     console.log("[AlertService] PhoneNumber:", phoneNumber);
     console.log("[AlertService] Message:");
     console.log(message);
