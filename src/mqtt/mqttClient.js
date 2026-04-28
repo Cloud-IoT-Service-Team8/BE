@@ -2,6 +2,7 @@ const mqtt = require("mqtt");
 const { validateEventPayload } = require("../validators/eventValidator");
 const { saveEvent } = require("../services/eventService");
 const { sendAlertIfNeeded } = require("../services/alertService");
+const { isDeviceRegistered } = require("../services/deviceService");
 
 function connectMqtt() {
     const brokerUrl = process.env.MQTT_BROKER_URL;
@@ -15,6 +16,8 @@ function connectMqtt() {
     const client = mqtt.connect(brokerUrl, {
         reconnectPeriod: 3000,
         connectTimeout: 5000,
+        username: process.env.MQTT_USERNAME || undefined,
+        password: process.env.MQTT_PASSWORD || undefined,
     });
 
     client.on("connect", () => {
@@ -48,6 +51,12 @@ function connectMqtt() {
 
             if (!validationResult.valid) {
                 console.error("[MQTT] Invalid event payload:", validationResult.errors);
+                return;
+            }
+
+            const registered = await isDeviceRegistered(payload.deviceId);
+            if (!registered) {
+                console.warn("[MQTT] Unregistered or revoked device, message dropped:", payload.deviceId);
                 return;
             }
 
