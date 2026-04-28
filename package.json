@@ -23,6 +23,7 @@
   "dependencies": {
     "@aws-sdk/client-sns": "^3.1037.0",
     "axios": "^1.15.2",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
