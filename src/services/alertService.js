@@ -49,10 +49,11 @@ async function sendAlertIfNeeded(event) {
         return;
     }
 
-    if (isInCooldown(guardian.last_alerted_at)) {
-        console.log("[AlertService] Cooldown active, skipping alert for userId:", event.userId);
-        return;
-    }
+    // TODO: 테스트 후 쿨다운 복구
+    // if (isInCooldown(guardian.last_alerted_at)) {
+    //     console.log("[AlertService] Cooldown active, skipping alert for userId:", event.userId);
+    //     return;
+    // }
 
     const alertChannel = process.env.ALERT_CHANNEL || "console";
 

@@ -2,7 +2,6 @@ const mqtt = require("mqtt");
 const { validateEventPayload } = require("../validators/eventValidator");
 const { saveEvent } = require("../services/eventService");
 const { sendAlertIfNeeded } = require("../services/alertService");
-const { isDeviceRegistered } = require("../services/deviceService");
 
 function connectMqtt() {
     const brokerUrl = process.env.MQTT_BROKER_URL;
@@ -13,14 +12,17 @@ function connectMqtt() {
         return;
     }
 
+    const clientId = `healthcare-server-${process.pid}`;
+
     const client = mqtt.connect(brokerUrl, {
-        clientId: "healthcare-server",
-        clean: false,
+        clientId,
+        clean: true,
         reconnectPeriod: 3000,
-        connectTimeout: 5000,
+        connectTimeout: 10000,
+        keepalive: 60,
         username: process.env.MQTT_USERNAME || undefined,
         password: process.env.MQTT_PASSWORD || undefined,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     });
 
     client.on("connect", () => {
@@ -57,16 +59,12 @@ function connectMqtt() {
                 return;
             }
 
-            const registered = await isDeviceRegistered(payload.deviceId);
-            if (!registered) {
-                console.warn("[MQTT] Unregistered or revoked device, message dropped:", payload.deviceId);
-                return;
-            }
+            const internalEvent = mapToInternalEvent(payload);
 
-            await saveEvent(payload);
-            await sendAlertIfNeeded(payload);
+            await saveEvent(internalEvent);
+            await sendAlertIfNeeded(internalEvent);
 
-            console.log(`[MQTT] Event processed: ${payload.eventId}`);
+            console.log(`[MQTT] Event processed: ${internalEvent.eventId}`);
         } catch (error) {
             console.error("[MQTT] Failed to parse/process message:", error.message);
             console.error("[MQTT] This means the received payload is not valid JSON.");
@@ -84,6 +82,29 @@ function connectMqtt() {
     client.on("close", () => {
         console.log("[MQTT] Connection closed");
     });
+}
+
+function mapToInternalEvent(payload) {
+    const sensor = payload.processedSensorData || {};
+    return {
+        eventId: payload.eventId,
+        deviceId: payload.deviceId,
+        userId: payload.userId,
+        eventType: payload.eventType,
+        severity: payload.severity,
+        timestamp: payload.timestamp,
+        deliriumSuspected: payload.deliriumSuspected,
+        abnormalExit: payload.abnormalExit,
+        doorOpen: payload.doorOpen,
+        rfidDetected: payload.rfidDetected,
+        buzzerActivated: payload.buzzerActivated,
+        processedSensorData: {
+            heartRate: sensor.heartRate ?? null,
+            sleepState: sensor.sleepState ?? null,
+            activityLevel: sensor.activityLevel ?? null,
+            doorDistanceCm: sensor.doorDistanceCm ?? null,
+        },
+    };
 }
 
 module.exports = {

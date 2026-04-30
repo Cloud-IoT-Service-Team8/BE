@@ -1,16 +1,16 @@
 const { getDb } = require("../db/sqlite");
 
-async function isDeviceRegistered(deviceId) {
+async function getUserIdByDeviceId(deviceId) {
     const db = await getDb();
 
     const row = await db.get(
-        `SELECT device_id FROM devices WHERE device_id = ? AND revoked_at IS NULL`,
+        `SELECT user_id FROM devices WHERE device_id = ?`,
         [deviceId],
     );
 
-    return row !== undefined;
+    return row?.user_id ?? null;
 }
 
 module.exports = {
-    isDeviceRegistered,
+    getUserIdByDeviceId,
 };

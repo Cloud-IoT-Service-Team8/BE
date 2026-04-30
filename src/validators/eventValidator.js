@@ -1,5 +1,4 @@
-const VALID_EVENT_TYPES = ["DELIRIUM_SUSPECTED", "ABNORMAL_EXIT", "DELIRIUM_EXIT_RISK"];
-
+const VALID_EVENT_TYPES = ["DELIRIUM_SUSPECTED", "ABNORMAL_EXIT", "DELIRIUM_EXIT_RISK", "DOOR_OPEN"];
 const VALID_SEVERITIES = ["LOW", "MEDIUM", "HIGH"];
 
 function validateEventPayload(payload) {
@@ -56,25 +55,27 @@ function validateEventPayload(payload) {
         errors.push("buzzerActivated must be a boolean");
     }
 
-    if (!payload.processedSensorData || typeof payload.processedSensorData !== "object") {
-        errors.push("processedSensorData is required and must be an object");
-    } else {
-        const data = payload.processedSensorData;
+    if (payload.processedSensorData !== undefined) {
+        if (typeof payload.processedSensorData !== "object" || payload.processedSensorData === null) {
+            errors.push("processedSensorData must be an object");
+        } else {
+            const sensor = payload.processedSensorData;
 
-        if (data.heartRate !== undefined && typeof data.heartRate !== "number") {
-            errors.push("processedSensorData.heartRate must be a number");
-        }
+            if (sensor.heartRate !== undefined && typeof sensor.heartRate !== "number") {
+                errors.push("processedSensorData.heartRate must be a number");
+            }
 
-        if (data.sleepState !== undefined && typeof data.sleepState !== "string") {
-            errors.push("processedSensorData.sleepState must be a string");
-        }
+            if (sensor.sleepState !== undefined && typeof sensor.sleepState !== "string") {
+                errors.push("processedSensorData.sleepState must be a string");
+            }
 
-        if (data.activityLevel !== undefined && typeof data.activityLevel !== "number") {
-            errors.push("processedSensorData.activityLevel must be a number");
-        }
+            if (sensor.activityLevel !== undefined && typeof sensor.activityLevel !== "number") {
+                errors.push("processedSensorData.activityLevel must be a number");
+            }
 
-        if (data.doorDistanceCm !== undefined && typeof data.doorDistanceCm !== "number") {
-            errors.push("processedSensorData.doorDistanceCm must be a number");
+            if (sensor.doorDistanceCm !== undefined && typeof sensor.doorDistanceCm !== "number") {
+                errors.push("processedSensorData.doorDistanceCm must be a number");
+            }
         }
     }
 
