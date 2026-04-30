@@ -20,6 +20,7 @@ function connectMqtt() {
         connectTimeout: 5000,
         username: process.env.MQTT_USERNAME || undefined,
         password: process.env.MQTT_PASSWORD || undefined,
+        rejectUnauthorized: false
     });
 
     client.on("connect", () => {
